@@ -17,6 +17,7 @@ namespace metahash_client
 			foreach (var f in args)
 			{
 				var hash = CalculateSHA1(f);
+				Console.WriteLine("Looking up metadata for hash: {0}", hash);
 
 				using (var wc = new WebClient())
 				{
