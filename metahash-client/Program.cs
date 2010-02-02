@@ -30,8 +30,9 @@ namespace metahash_client
 		static string CalculateSHA1(string filename)
 		{
 			using (var csp = SHA1.Create())
-				return new string(csp.ComputeHash(File.ReadAllBytes(filename))
-					.SelectMany(a => a.ToString("x2")).ToArray());
+				using( var s = File.OpenRead(filename))
+					return new string(csp.ComputeHash(s)
+						.SelectMany(a => a.ToString("x2")).ToArray());
 		}
 	}
 }
