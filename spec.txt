@@ -56,7 +56,21 @@ Looking up metadata for hash: c3c3b813a07f6ac4fe47d786ebfcd931be45603e
         episode: 6,
         title: 'Chuck vs the Nacho Sampler'
 }
-            
+
+Client-side command-line client & filesystem layout:
+
+- All extra junk required for MetaHash should be placed in a .metahash directory. This should exist only at the root of the content tree,
+	in the same manner as git. The .metahash directory will contain various things - a local cache of the downloaded metadata, a mapping
+	between current paths and their hashes, etc.
+- We'll also read any .mhignore files that exist in the tree.
+	
+- Interactive command-line client can be invoked:
+	mh init				-- initialize a new metahash tree here. existing content in the tree will be indexed.
+	mh sync	[url]			-- download the latest metadata for everything in the tree. If [url] is not provided, the 
+								default (http://metahash.com/file/) will be used instead
+	mh info file-or-hash	-- display the cached metadata for the named files or hashes
+	mh pivot [pivot-spec]	-- pivots the content tree onto a new spec. this is a smart tree rename.
+	
             
     Fast hashing system
     SHA-1 hash

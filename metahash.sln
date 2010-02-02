@@ -3,6 +3,12 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "metahash-client", "metahash-client\metahash-client.csproj", "{A3CA4B00-890C-4FCD-AF22-1419E740D508}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{40853E31-E5AB-4CEB-A174-D4A09C2374B8}"
+	ProjectSection(SolutionItems) = preProject
+		README = README
+		spec.txt = spec.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
