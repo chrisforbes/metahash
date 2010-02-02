@@ -1,0 +1,127 @@
+Visitors: 
+    This is the spec for metahash.com, a new web service to help you organise
+    your collection of tv shows, etc. It works by taking a `fingerprint` of your files and   
+    comparing that against a DB. Then it can download correct metadata for them, doing 
+    renames, etc for you. No more bogus filenames!
+    
+    If you have any thoughts, share them by just typing in the relevant place...
+
+Let's spec out what we actually want.
+
+So, technology:
+    - something that's available everywhere.
+    - solid SHA1 impl
+    - http support (not exactly difficult)
+    - minimal deps!
+    
+Code is at:
+    github.com/chrisforbes/metahash
+
+Client side:
+    Client<->Server communtication using REST 
+        beedee: if you want to lay out the URI space here, go for it :D
+        GET /file/<hash> - Gets metadata associated with hash
+        PUT /file/<hash> - Creates or updates metadata<->hash association
+            you're probably going to need some other bits:
+                /show/
+                etc etc
+        GET /show/<show name> - Lists episodes of the show
+                is <show name> human-readable? or is it a hash too? how do we canonicalize names?
+        GET /show/<show name>/<episode ref> - Gets episode metadata (as opposed to *file* metadata) ? Yes, then maybe:
+        PUT /show/<show name>/<episode ref>/<hash> - Assigns the file to that episode. That link needs to be navigable both ways.
+                    content of /file/<hash> needs to contain an episode URI too.
+                    So maybe not assign the episode like that?
+                    I have no problem with multiple ways of assigning things... but a PUT has fairly clear semantics :)
+                    Btw, from JS, PUT is difficult. We're stuck with POST in a lot of cases. Lame, I know.
+            are *seasons* first-class in our system?
+            do we have tags?
+            I don't think it's necessary for seasons to be first-class, they're just extra metadata 
+            on episodes.
+            
+            OK, the *one* thing we need to start with is the /file/ namespace. I need to be able to give you a SHA1 and get back
+            what you know about it :)
+            Ok.
+            Simple solution: just serve static text files for now. 
+            Oh FFS, what kind of OS doesn't have `sha1sum` ? (windows)
+            
+            OK, it works!
+            
+Here, evidence!
+
+chrisf@cookie-monster $d:\code\metahash\metahash-client\bin\Debug\metahash-client.exe Chuck.S03E06.HDTV.XviD-LOL.avi
+Looking up metadata for hash: c3c3b813a07f6ac4fe47d786ebfcd931be45603e
+{
+        series: '/show/chuck',
+        season: 3,
+        episode: 6,
+        title: 'Chuck vs the Nacho Sampler'
+}
+            
+            
+    Fast hashing system
+    SHA-1 hash
+    Cross-platform? yes. Probably want a *nix daemon that can play nice with your torrent client
+    Windows probably needs some silent hidden magic + a noob UI.
+    Potentially a Azureus plugin? Quite possibly. Does this have to be Java still? Yeah, the API is all Java based.
+    
+    So, client side features?
+        - Collect hashes (ignore files based on a pattern, to avoid clashes with torrent client & incomplete files)
+        - Pull down metadata for them
+        - Upload / add to db mechanism
+        - Episode browser? or is that too big? For the initial release, probably.
+            OK, let's just make something simple work :D
+            
+            - add one or more directories to watch
+            - daemon automatically hashes the files (&caches name/hash pairs to avoid rehash)
+            - fetches proper names for everything it can, renames the files?
+                - user defined with sane presets (common 2 styles for tv)? That'd be best, probably leave in scene tags optionally as well.
+                - Ugh, ok. *optionally*.
+                - I assume anime has its own conventions for episode naming, or does it more or less stick with the tv conventions? 
+                    Typically an anime series only has one season so there  aren't anything other than episode numbers and names on them.
+
+Server side:
+    associative store: hash -> metadata
+    Presumably, some kind of web frontend to browse & correct metadata. -> collaborative.
+    Need to group multiple files (with different hashes) together as the same chunk of 
+    logical content (350M/700M/HD versions, multiple releases, etc)
+        - *MUST NOT* facilitate getting files. So no links to torrent trackers even. Inbound links from torrent trackers are fine, outbound is not.
+                (nothing wrong with convincing some uploaders at thepiratebay.org to include a link to the appropriate things on our site!)
+                Unless you want to experience the wrong end of our copyright law, no. :D
+        - also, anonymity is pretty important. we're in a position to know exactly what 
+            infringing material people have, unless we're careful to protect their privacy.
+               Well obviously we won't be revealing IP addresses to anyone, I think it's their own 
+               responsibility to make sure their alias isn't something that could be linked to 
+               them. We need some accountability for changes so we can't have complete anonymity. :/
+        In most cases, we probably don't want to even require registration. Completely
+             open wikis work reasonably well *until* they are abused - then you lock down the
+             areas that are being abused.
+        - Accountability for changes? I care about quality of content... but that's about all.
+                - voting? proven to work sortof ok [reddit]
+           We definitely need abuse management systems. e.g. ability to roll back changes to
+            previous revision.
+            I was considering using a VCS as the backend ;)
+            How's that going to be for speed as opposed to a database?
+            Git is pretty fast ;)
+            What about hard drive usage? It's just tiny blobs of metadata.
+            I guess if it's all text, then Git would work fine...
+            
+    Example of similar web frontend to what we might want: 
+        http://anidb.net/perl-bin/animedb.pl?show=anime&aid=4897
+
+    Expand one of the episodes and you get release info from different groups
+    Just an example of how to group releases for the same show from a web UI perspective
+
+How do we get *correct* metadata?
+    - community driven?
+    - fetch from external sources?
+    - some combination?
+
+I think the latter, initially get the metadata from an external source then allow others to correct it.
+
+So... some crazy query stuff? You upload a hash, type roughly what the file is, and it looks up the external sources we know?
+Yeah, things like IMDB have metadata on shows. Even if it's just episode names.
+At the episode level?
+Yeah
+Ok. I assume we can consume IMDB easily, + scrape some others (i've used tv.com :o, wikipedia, etc with mixed results)
+Wikipedia sucks, there's no standard between shows. Or even seasons sometimes.
+
