@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# metahash client v0.0
+# (c) 2010 Chris Forbes (chrisf@ijw.co.nz)
+# this code is licensed under the GNU General Public License, V2 or later.
+
+locate_stash () {
+	pushd `pwd` > /dev/null
+	while [ ! -d ".metahash" ]; do
+		cd ..
+		if [ "/" = "`pwd`" ]; then
+			echo "mh: Not a metahash tree."
+			exit 1
+		fi
+	done 
+	stash=`pwd`/.metahash
+	popd > /dev/null
+}
+
+scan_file () {
+	need_rehash=0
+	if [ "$1" -nt $stash/hashes ]; then
+		# newer than the hash store, so *must* need rehash
+		need_rehash=1
+	else
+		cat $stash/hashes | grep "$1" > /dev/null
+		hash_exists=$?
+		if [ $hash_exists = "1" ]; then 
+			need_rehash=1 
+		fi
+	fi
+
+	if [ $need_rehash = "1" ]; then
+		echo $1 >> $stash/to-rehash
+		num_calculated=$(( $num_calculated + 1 ))
+	else
+		grep -h "$1" $stash/hashes >> $stash/new-hashes
+		num_reused=$(( $num_reused + 1 ))
+	fi
+}
+
+scan_content () {
+	locate_stash
+	num_calculated=0
+	num_reused=0
+	echo "Located stash: $stash"
+	if [ -f $stash/new-hashes ]; then
+		rm $stash/new-hashes
+	fi
+	if [ -f $stash/to-rehash ]; then
+		rm $stash/to-rehash
+	fi
+
+	for file in `find -type f | grep -v '.metahash/'`; do
+		scan_file $file
+	done
+
+	if [ ! -f $stash/to-rehash ]; then
+		touch $stash/to-rehash
+	fi
+
+	to_rehash=`cat $stash/to-rehash | wc -l`
+	n=0
+	if [ $to_rehash != "0" ]; then
+		for f in `cat $stash/to-rehash`; do
+			n=$(( $n + 1 ))
+			echo "[$n/$to_rehash] Hashing \`$f\`, (`du -bhs $f | awk '{print $1}'`)"
+			sha1sum $f >> $stash/new-hashes
+		done
+	fi
+
+	rm $stash/to-rehash
+	mv $stash/new-hashes $stash/hashes
+
+	echo "Finished scanning content:"
+	echo "	$num_calculated calculated, $num_reused up to date."
+}
+
+lookup_info () {
+	locate_stash
+	echo "Located stash: $stash"
+	hash=`cat $stash/hashes | grep "$1" | cut -d' ' -f1`
+	echo "Hash: $hash"
+	if [ ! -f $stash/meta/$hash ]; then
+		echo "No metadata found for \`$1\`."
+		exit 1
+	fi
+	cat $stash/meta/$hash
+}
+
+case "$1" in
+"init")
+	if [ -d .metahash ]; then
+		echo "There is already a metahash tree here!"
+		exit 1
+	fi
+	mkdir .metahash
+	echo "Created new metahash tree in `pwd`/.metahash"
+;;
+"scan")
+	scan_content
+;;
+"info")
+	shift
+	lookup_info $*
+;;
+"")
+	echo "mh: collaborative content indexer & metadata store - in the cloud"
+	echo "usage: "
+	echo "	mh init		-- initialize a new metadata tree rooted here"
+	echo "	mh scan		-- collect hashes of all content in the tree"
+	echo "	mh fetch	-- download metadata from metahash.com for your files"
+	echo "	mh info		-- dump known metadata for a file or set of files"
+	echo "	mh pivot	-- pivot the entire content tree onto a new spec"
+;;
+*)
+	echo "$1 is not a valid command."
+;;
+esac
